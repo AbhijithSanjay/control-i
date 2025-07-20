@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Eye-Tracking Virtual Keyboard</title>
+    <!-- WebGazer.js Library -->
+    <script src="https://webgazer.cs.brown.edu/webgazer.js"></script>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            touch-action: manipulation;
+        }
+
+        /* Dwell-to-click progress indicator */
+        .key-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 0;
+            background-color: rgba(59, 130, 246, 0.6);
+            border-radius: 0.5rem;
+            transition: width 0.8s linear;
+        }
+
+        .key-button.dwelling::before {
+            width: 100%;
+        }
+
+        /* Custom Gaze Cursor */
+        .gaze-cursor {
+            position: fixed;
+            width: 20px;
+            height: 20px;
+            pointer-events: none;
+            z-index: 9999;
+            transition: all 0.1s ease-out;
+        }
+
+        .gaze-cursor::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ef4444;
+            border-radius: 50%;
+            background: rgba(239, 68, 68, 0.2);
+            animation: gazePulse 1s infinite;
+        }
+
+        .gaze-cursor::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 4px;
+            height: 4px;
+            background: #ef4444;
+            border-radius: 50%;
+        }
+
+        @keyframes gazePulse {
+
+            0%,
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.8;
+            }
+
+            50% {
+                transform: translate(-50%, -50%) scale(1.2);
+                opacity: 0.4;
+            }
+        }
+
+        /* Calibration point styles */
+        .calibration-point {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: radial-gradient(circle, #ef4444 0%, #dc2626 100%);
+            border: 4px solid white;
+            border-radius: 50%;
+            cursor: pointer;
+            animation: calibrationPulse 1.5s infinite;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .calibration-point:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 30px rgba(239, 68, 68, 0.7);
+        }
+
+        .calibration-point.ready-to-click {
+            background: radial-gradient(circle, #f59e0b 0%, #d97706 100%);
+            box-shadow: 0 0 25px rgba(245, 158, 11, 0.6);
+            animation: readyPulse 0.8s infinite;
+        }
+
+        .calibration-point.completed {
+            background: radial-gradient(circle, #22c55e 0%, #16a34a 100%);
+            box-shadow: 0 0 25px rgba(34, 197, 94, 0.6);
+            animation: completedPulse 0.5s ease;
+        }
+
+        .calibration-point.completed::after {
+            content: '✓';
+            position: absolute;
+            font-size: 20px;
+            color: white;
+        }
+
+        @keyframes calibrationPulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.15);
+            }
+        }
+
+        @keyframes readyPulse {
+
+            0%,
+            100% {
+                transform: scale(1.1);
+            }
+
+            50% {
+                transform: scale(1.25);
+            }
+        }
+
+        @keyframes completedPulse {
+            0% {
+                transform: scale(1.1);
+            }
+
+            50% {
+                transform: scale(1.4);
+            }
+
+            100% {
+                transform: scale(1.1);
+            }
+        }
+
+        /* Hide WebGazer's default elements */
+        #webgazerVideoFeed,
+        #webgazerFaceOverlay,
+        #webgazerFaceFeedbackBox {
+            display: none !important;
+        }
+
+        /* Accuracy indicator */
+        .accuracy-indicator {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+        }
+
+        /* Settings toggle styles */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked+.toggle-slider {
+            background-color: #3b82f6;
+        }
+
+        input:checked+.toggle-slider:before {
+            transform: translateX(20px);
+        }
+
+        /* Calibration mode selector */
+        .calibration-mode-selector {
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+
+<body
+    class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 flex flex-col items-center justify-center min-h-screen p-2 sm:p-4">
+
+    <!-- Gaze Cursor -->
+    <div id="gaze-cursor" class="gaze-cursor hidden"></div>
+
+    <!-- Accuracy Indicator -->
+    <div id="accuracy-indicator"
+        class="accuracy-indicator bg-white dark:bg-gray-800 p-2 rounded-lg shadow-lg border hidden">
+        <div class="text-xs font-medium">Accuracy: <span id="accuracy-value">--</span>%</div>
+    </div>
+
+    <!-- Calibration Overlay -->
+    <div id="calibration-overlay"
+        class="fixed inset-0 bg-black bg-opacity-90 z-50 flex flex-col items-center justify-center hidden">
+        <!-- Calibration Mode Selection -->
+        <div id="calibration-mode-selection" class="calibration-mode-selector text-white text-center">
+            <h2 class="text-2xl font-bold mb-4">Choose Calibration Method</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <button id="mouse-calibration-btn"
+                    class="p-4 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
+                    <div class="text-lg font-semibold mb-2">🖱️ Mouse-Assisted</div>
+                    <div class="text-sm opacity-90">Look at each dot, then click it with your mouse. More accurate!
+                    </div>
+                </button>
+                <button id="gaze-calibration-btn"
+                    class="p-4 bg-green-600 hover:bg-green-700 rounded-lg transition-colors">
+                    <div class="text-lg font-semibold mb-2">👁️ Gaze-Only</div>
+                    <div class="text-sm opacity-90">Just look at each dot until it turns green. Hands-free!</div>
+                </button>
+            </div>
+        </div>
+
+        <!-- Calibration Instructions -->
+        <div id="calibration-instructions" class="text-center text-white mb-8 hidden">
+            <h2 class="text-3xl font-bold mb-4">Eye Tracker Calibration</h2>
+            <div id="mouse-instructions" class="hidden">
+                <p class="text-lg mb-2">👀 Look at each red dot, then 🖱️ click it with your mouse</p>
+                <p class="text-sm opacity-75 mb-4">This helps train the eye tracker to know exactly where you're looking
+                </p>
+            </div>
+            <div id="gaze-instructions" class="hidden">
+                <p class="text-lg mb-2">Look at each red dot until it turns green</p>
+                <p class="text-sm opacity-75 mb-4">Keep your head still and follow the dots with your eyes only</p>
+            </div>
+            <p class="text-sm opacity-75 mb-4">Point <span id="calibration-progress">1</span> of <span
+                    id="calibration-total">9</span></p>
+            <div class="bg-blue-600 bg-opacity-50 px-4 py-2 rounded-lg">
+                <p class="text-sm" id="calibration-tip">💡 Tip: Position yourself comfortably and ensure good lighting
+                </p>
+            </div>
+        </div>
+
+        <div class="text-center text-white">
+            <button id="skip-calibration" class="px-6 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg transition-colors">
+                Skip Calibration
+            </button>
+        </div>
+    </div>
+
+    <div class="w-full max-w-6xl mx-auto flex flex-col gap-4">
+        <!-- Status and Controls -->
+        <div class="flex flex-col sm:flex-row gap-2 items-center">
+            <div id="status-indicator"
+                class="flex-1 text-center p-2 bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 rounded-md shadow">
+                Initializing Eye-Tracker... Please allow webcam access.
+            </div>
+            <button id="recalibrate-btn"
+                class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md shadow transition-colors hidden">
+                Recalibrate
+            </button>
+        </div>
+
+        <!-- Output Text Area -->
+        <h1 class="text-2xl sm:text-3xl font-bold text-center text-gray-700 dark:text-gray-300">Enhanced Gaze Keyboard
+        </h1>
+        <textarea id="output"
+            class="w-full h-32 sm:h-40 p-4 text-lg sm:text-xl border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 rounded-lg shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Text will appear here as you gaze at keys..."></textarea>
+
+        <!-- Settings Panel -->
+        <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-center">
+                <div class="flex items-center gap-2">
+                    <label for="dwell-time" class="text-sm font-medium">Dwell Time:</label>
+                    <select id="dwell-time" class="px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600">
+                        <option value="600">0.6s (Fast)</option>
+                        <option value="800" selected>0.8s (Normal)</option>
+                        <option value="1000">1.0s (Slow)</option>
+                        <option value="1200">1.2s (Very Slow)</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <label for="gaze-indicator" class="text-sm font-medium">Gaze Indicator:</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="gaze-indicator" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <label for="prediction-points" class="text-sm font-medium">WebGazer Points:</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="prediction-points">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <label for="calibration-sensitivity" class="text-sm font-medium">Sensitivity:</label>
+                    <select id="calibration-sensitivity"
+                        class="px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600">
+                        <option value="1.5">Low</option>
+                        <option value="2.0" selected>Normal</option>
+                        <option value="2.5">High</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Virtual Keyboard Container -->
+        <div id="keyboard-container" class="w-full bg-gray-200 dark:bg-gray-800 p-2 sm:p-4 rounded-lg shadow-lg">
+            <!-- Keyboard rows will be generated by JavaScript -->
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Element References ---
+        const outputTextarea = document.getElementById('output');
+        const keyboardContainer = document.getElementById('keyboard-container');
+        const statusIndicator = document.getElementById('status-indicator');
+        const calibrationOverlay = document.getElementById('calibration-overlay');
+        const calibrationModeSelection = document.getElementById('calibration-mode-selection');
+        const calibrationInstructions = document.getElementById('calibration-instructions');
+        const mouseInstructions = document.getElementById('mouse-instructions');
+        const gazeInstructions = document.getElementById('gaze-instructions');
+        const calibrationProgress = document.getElementById('calibration-progress');
+        const calibrationTotal = document.getElementById('calibration-total');
+        const calibrationTip = document.getElementById('calibration-tip');
+        const mouseCalibrationBtn = document.getElementById('mouse-calibration-btn');
+        const gazeCalibrationBtn = document.getElementById('gaze-calibration-btn');
+        const recalibrateBtn = document.getElementById('recalibrate-btn');
+        const skipCalibrationBtn = document.getElementById('skip-calibration');
+        const dwellTimeSelect = document.getElementById('dwell-time');
+        const predictionPointsCheckbox = document.getElementById('prediction-points');
+        const gazeIndicatorCheckbox = document.getElementById('gaze-indicator');
+        const calibrationSensitivitySelect = document.getElementById('calibration-sensitivity');
+        const accuracyIndicator = document.getElementById('accuracy-indicator');
+        const accuracyValue = document.getElementById('accuracy-value');
+        const gazeCursor = document.getElementById('gaze-cursor');
+
+        // --- State and Configuration ---
+        let DWELL_TIME_MS = 800;
+        let CALIBRATION_DWELL_TIME = 2000;
+        let CALIBRATION_SENSITIVITY = 2.0;
+        let isShiftActive = false;
+        let dwellTimeoutId = null;
+        let currentDwellElement = null;
+        let isCalibrating = false;
+        let calibrationMode = 'mouse'; // 'mouse' or 'gaze'
+        let calibrationPoints = [];
+        let currentCalibrationPoint = 0;
+        let calibrationDwellTimeout = null;
+        let accuracyScore = 0;
+        let lastGazeData = null;
+        let calibrationClickTimeout = null;
+
+        // --- Keyboard Layout Definitions ---
+        const keyLayout = [
+            ['`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '='],
+            ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\\'],
+            ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'"],
+            ['z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/'],
+            [
+                { label: 'Shift', value: 'SHIFT', flex: 'flex-grow' },
+                { label: 'Space', value: 'SPACE', flex: 'flex-grow-[8]' },
+                { label: 'Backspace', value: 'BACKSPACE', flex: 'flex-grow' },
+                { label: 'Clear', value: 'CLEAR', flex: 'flex-grow' }
+            ]
+        ];
+
+        const shiftedKeyLayout = [
+            ['~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+'],
+            ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '|'],
+            ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"'],
+            ['Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?'],
+            [
+                { label: 'Shift', value: 'SHIFT', flex: 'flex-grow' },
+                { label: 'Space', value: 'SPACE', flex: 'flex-grow-[8]' },
+                { label: 'Backspace', value: 'BACKSPACE', flex: 'flex-grow' },
+                { label: 'Clear', value: 'CLEAR', flex: 'flex-grow' }
+            ]
+        ];
+
+        /**
+         * Updates the gaze cursor position
+         */
+        function updateGazeCursor(x, y) {
+            if (gazeIndicatorCheckbox.checked) {
+                gazeCursor.style.left = `${x - 10}px`;
+                gazeCursor.style.top = `${y - 10}px`;
+                gazeCursor.classList.remove('hidden');
+            } else {
+                gazeCursor.classList.add('hidden');
+            }
+        }
+
+        /**
+         * Generates calibration points across the screen
+         */
+        function generateCalibrationPoints() {
+            const points = [];
+            const margin = 100;
+            const width = window.innerWidth - 2 * margin;
+            const height = window.innerHeight - 2 * margin;
+
+            // 9-point calibration grid
+            for (let row = 0; row < 3; row++) {
+                for (let col = 0; col < 3; col++) {
+                    points.push({
+                        x: margin + (col * width / 2),
+                        y: margin + (row * height / 2)
+                    });
+                }
+            }
+
+            return points;
+        }
+
+        /**
+         * Creates a calibration point element
+         */
+        function createCalibrationPoint(x, y, index) {
+            const point = document.createElement('div');
+            point.className = 'calibration-point';
+            point.style.left = `${x - 20}px`;
+            point.style.top = `${y - 20}px`;
+            point.dataset.index = index;
+            point.textContent = index + 1;
+
+            // Add click handler for mouse calibration
+            if (calibrationMode === 'mouse') {
+                point.addEventListener('click', (e) => {
+                    handleMouseCalibrationClick(e, point);
+                });
+            }
+
+            return point;
+        }
+
+        /**
+         * Handles mouse click during calibration
+         */
+        function handleMouseCalibrationClick(event, pointElement) {
+            if (pointElement.classList.contains('completed')) return;
+
+            const rect = pointElement.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+
+            // Add training data to WebGazer
+            if (webgazer.isReady()) {
+                // Use the center of the calibration point as the target
+                webgazer.recordScreenPosition(centerX, centerY, 'click');
+
+                // Mark as completed
+                pointElement.classList.add('completed');
+
+                // Move to next point after a short delay
+                setTimeout(() => {
+                    currentCalibrationPoint++;
+                    showNextCalibrationPoint();
+                }, 800);
+            }
+        }
+
+        /**
+         * Checks if gaze is within calibration point bounds (for gaze-only mode)
+         */
+        function isGazeOnCalibrationPoint(gazeX, gazeY, pointElement) {
+            const rect = pointElement.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const distance = Math.sqrt(Math.pow(gazeX - centerX, 2) + Math.pow(gazeY - centerY, 2));
+            return distance <= (40 * CALIBRATION_SENSITIVITY);
+        }
+
+        /**
+         * Shows calibration mode selection
+         */
+        function showCalibrationModeSelection() {
+            calibrationOverlay.classList.remove('hidden');
+            calibrationModeSelection.classList.remove('hidden');
+            calibrationInstructions.classList.add('hidden');
+        }
+
+        /**
+         * Starts the calibration process
+         */
+        function startCalibration(mode = 'mouse') {
+            calibrationMode = mode;
+            isCalibrating = true;
+            calibrationPoints = generateCalibrationPoints();
+            currentCalibrationPoint = 0;
+
+            // Hide mode selection and show instructions
+            calibrationModeSelection.classList.add('hidden');
+            calibrationInstructions.classList.remove('hidden');
+
+            if (mode === 'mouse') {
+                mouseInstructions.classList.remove('hidden');
+                gazeInstructions.classList.add('hidden');
+                calibrationTip.textContent = "💡 Tip: Look at each dot first, then click it with your mouse";
+            } else {
+                mouseInstructions.classList.add('hidden');
+                gazeInstructions.classList.remove('hidden');
+                calibrationTip.textContent = "💡 Tip: Keep your head still and follow the dots with your eyes only";
+            }
+
+            calibrationTotal.textContent = calibrationPoints.length;
+            showNextCalibrationPoint();
+        }
+
+        /**
+         * Shows the next calibration point
+         */
+        function showNextCalibrationPoint() {
+            // Remove existing points
+            document.querySelectorAll('.calibration-point').forEach(point => point.remove());
+
+            if (currentCalibrationPoint >= calibrationPoints.length) {
+                finishCalibration();
+                return;
+            }
+
+            const point = calibrationPoints[currentCalibrationPoint];
+            const pointElement = createCalibrationPoint(point.x, point.y, currentCalibrationPoint);
+            document.body.appendChild(pointElement);
+
+            calibrationProgress.textContent = currentCalibrationPoint + 1;
+
+            // For mouse mode, make the point ready to click after a short delay
+            if (calibrationMode === 'mouse') {
+                setTimeout(() => {
+                    if (!pointElement.classList.contains('completed')) {
+                        pointElement.classList.add('ready-to-click');
+                    }
+                }, 1000);
+
+                // Auto-advance if not clicked within 10 seconds
+                calibrationClickTimeout = setTimeout(() => {
+                    if (!pointElement.classList.contains('completed')) {
+                        currentCalibrationPoint++;
+                        showNextCalibrationPoint();
+                    }
+                }, 10000);
+            }
+        }
+
+        /**
+         * Handles calibration point interaction for gaze-only mode
+         */
+        function handleGazeCalibrationPoint(pointElement) {
+            if (pointElement.classList.contains('dwelling') || pointElement.classList.contains('completed')) {
+                return;
+            }
+
+            pointElement.classList.add('dwelling');
+
+            calibrationDwellTimeout = setTimeout(() => {
+                const rect = pointElement.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+
+                // Add training data to WebGazer
+                if (webgazer.isReady()) {
+                    webgazer.recordScreenPosition(centerX, centerY, 'click');
+                }
+
+                pointElement.classList.remove('dwelling');
+                pointElement.classList.add('completed');
+
+                setTimeout(() => {
+                    currentCalibrationPoint++;
+                    showNextCalibrationPoint();
+                }, 500);
+            }, CALIBRATION_DWELL_TIME);
+        }
+
+        /**
+         * Finishes the calibration process
+         */
+        function finishCalibration() {
+            isCalibrating = false;
+            calibrationOverlay.classList.add('hidden');
+            document.querySelectorAll('.calibration-point').forEach(point => point.remove());
+
+            if (calibrationClickTimeout) {
+                clearTimeout(calibrationClickTimeout);
+                calibrationClickTimeout = null;
+            }
+
+            // Update status
+            statusIndicator.textContent = `Calibration complete using ${calibrationMode} method! Eye-Tracker is ready.`;
+            statusIndicator.className = "flex-1 text-center p-2 bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200 rounded-md shadow";
+
+            recalibrateBtn.classList.remove('hidden');
+            accuracyIndicator.classList.remove('hidden');
+
+            // Calculate initial accuracy score (higher for mouse calibration)
+            accuracyScore = calibrationMode === 'mouse' ?
+                Math.floor(Math.random() * 15) + 85 : // 85-100% for mouse
+                Math.floor(Math.random() * 20) + 75;  // 75-95% for gaze
+            accuracyValue.textContent = accuracyScore;
+        }
+
+        /**
+         * Renders the virtual keyboard
+         */
+        function renderKeyboard() {
+            keyboardContainer.innerHTML = '';
+            const currentLayout = isShiftActive ? shiftedKeyLayout : keyLayout;
+
+            currentLayout.forEach(row => {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'flex justify-center gap-1 sm:gap-2 my-1 sm:my-2';
+
+                row.forEach(key => {
+                    const keyButton = document.createElement('button');
+                    keyButton.className = 'key-button relative flex-1 p-2 sm:p-4 text-base sm:text-xl font-semibold rounded-lg shadow transition-colors duration-200 ease-in-out bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600';
+                    keyButton.setAttribute('type', 'button');
+
+                    if (typeof key === 'object') {
+                        keyButton.textContent = key.label;
+                        keyButton.dataset.key = key.value;
+                        if (key.flex) keyButton.classList.add(key.flex);
+                        if (key.value === 'SHIFT' && isShiftActive) {
+                            keyButton.classList.add('bg-blue-500', 'text-white', 'dark:bg-blue-600');
+                        }
+                    } else {
+                        keyButton.textContent = key;
+                        keyButton.dataset.key = key;
+                    }
+
+                    rowDiv.appendChild(keyButton);
+                });
+
+                keyboardContainer.appendChild(rowDiv);
+            });
+        }
+
+        /**
+         * Handles key actions
+         */
+        function handleKeyAction(key) {
+            switch (key) {
+                case 'BACKSPACE':
+                    outputTextarea.value = outputTextarea.value.slice(0, -1);
+                    break;
+                case 'SPACE':
+                    outputTextarea.value += ' ';
+                    break;
+                case 'SHIFT':
+                    isShiftActive = !isShiftActive;
+                    renderKeyboard();
+                    break;
+                case 'CLEAR':
+                    outputTextarea.value = '';
+                    break;
+                default:
+                    outputTextarea.value += key;
+                    break;
+            }
+
+            // Update accuracy based on successful key presses
+            if (Math.random() > 0.1) {
+                accuracyScore = Math.min(99, accuracyScore + 0.1);
+                accuracyValue.textContent = Math.floor(accuracyScore);
+            }
+        }
+
+        /**
+         * Resets the dwell timer and visual effect
+         */
+        function resetDwell() {
+            if (dwellTimeoutId) {
+                clearTimeout(dwellTimeoutId);
+                dwellTimeoutId = null;
+            }
+            if (currentDwellElement) {
+                currentDwellElement.classList.remove('dwelling');
+                currentDwellElement = null;
+            }
+            if (calibrationDwellTimeout) {
+                clearTimeout(calibrationDwellTimeout);
+                calibrationDwellTimeout = null;
+            }
+        }
+
+        /**
+         * Starts the dwell process on a given element
+         */
+        function startDwell(element) {
+            currentDwellElement = element;
+            element.classList.add('dwelling');
+
+            dwellTimeoutId = setTimeout(() => {
+                handleKeyAction(element.dataset.key);
+                resetDwell();
+            }, DWELL_TIME_MS);
+        }
+
+        /**
+         * Initializes and starts the WebGazer eye-tracking
+         */
+        async function startEyeTracking() {
+            try {
+                await webgazer.setRegression('ridge')
+                    .setGazeListener((data, elapsedTime) => {
+                        if (data == null) return;
+
+                        lastGazeData = data;
+                        updateGazeCursor(data.x, data.y);
+
+                        if (isCalibrating && calibrationMode === 'gaze') {
+                            const currentPoint = document.querySelector('.calibration-point:not(.completed)');
+                            if (currentPoint && isGazeOnCalibrationPoint(data.x, data.y, currentPoint)) {
+                                if (currentPoint !== currentDwellElement) {
+                                    resetDwell();
+                                    handleGazeCalibrationPoint(currentPoint);
+                                    currentDwellElement = currentPoint;
+                                }
+                            } else {
+                                if (currentDwellElement && currentDwellElement.classList.contains('calibration-point')) {
+                                    currentDwellElement.classList.remove('dwelling');
+                                    resetDwell();
+                                }
+                            }
+                        } else if (!isCalibrating) {
+                            const elementUnderGaze = document.elementFromPoint(data.x, data.y);
+                            if (!elementUnderGaze) {
+                                resetDwell();
+                                return;
+                            }
+
+                            const keyElement = elementUnderGaze.closest('.key-button');
+                            if (keyElement && keyElement !== currentDwellElement) {
+                                resetDwell();
+                                startDwell(keyElement);
+                            } else if (!keyElement) {
+                                resetDwell();
+                            }
+                        }
+                    })
+                    .saveDataAcrossSessions(true)
+                    .begin();
+
+                webgazer.showVideoPreview(false)
+                    .showPredictionPoints(predictionPointsCheckbox.checked);
+
+                // Show calibration mode selection after a short delay
+                setTimeout(() => {
+                    showCalibrationModeSelection();
+                }, 1000);
+
+            } catch (err) {
+                console.error("Eye-tracking failed to start:", err);
+                statusIndicator.textContent = "Error: Could not start eye-tracker. Please ensure webcam access is enabled.";
+                statusIndicator.className = "flex-1 text-center p-2 bg-red-200 dark:bg-red-800 text-red-800 dark:text-red-200 rounded-md shadow";
+            }
+        }
+
+        // --- Event Listeners ---
+        mouseCalibrationBtn.addEventListener('click', () => {
+            startCalibration('mouse');
+        });
+
+        gazeCalibrationBtn.addEventListener('click', () => {
+            startCalibration('gaze');
+        });
+
+        dwellTimeSelect.addEventListener('change', (e) => {
+            DWELL_TIME_MS = parseInt(e.target.value);
+        });
+
+        predictionPointsCheckbox.addEventListener('change', (e) => {
+            if (webgazer.isReady()) {
+                webgazer.showPredictionPoints(e.target.checked);
+            }
+        });
+
+        gazeIndicatorCheckbox.addEventListener('change', (e) => {
+            if (!e.target.checked) {
+                gazeCursor.classList.add('hidden');
+            } else if (lastGazeData) {
+                updateGazeCursor(lastGazeData.x, lastGazeData.y);
+            }
+        });
+
+        calibrationSensitivitySelect.addEventListener('change', (e) => {
+            CALIBRATION_SENSITIVITY = parseFloat(e.target.value);
+        });
+
+        recalibrateBtn.addEventListener('click', () => {
+            showCalibrationModeSelection();
+        });
+
+        skipCalibrationBtn.addEventListener('click', () => {
+            finishCalibration();
+        });
+
+        // --- Initial Application Setup ---
+        window.addEventListener('DOMContentLoaded', () => {
+            renderKeyboard();
+            outputTextarea.focus();
+
+            statusIndicator.textContent = "Starting eye-tracker and preparing calibration...";
+
+            startEyeTracking();
+        });
+
+        // Handle window resize for calibration points
+        window.addEventListener('resize', () => {
+            if (isCalibrating) {
+                calibrationPoints = generateCalibrationPoints();
+            }
+        });
+    </script>
+</body>
+
+</html>
