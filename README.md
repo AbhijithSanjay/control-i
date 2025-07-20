@@ -1,3 +1,53 @@
-Gaze-Controlled Virtual KeyboardA submission for the Vibe Coding Hackathon by TinkerHubThis project is a web-based virtual keyboard that allows users to type without using their hands. It simulates a powerful accessibility tool by using eye-gaze tracking to select and type characters. The user's gaze, tracked via their webcam, controls a cursor on the screen, and dwelling on a key for a short period triggers a "click."(Replace the placeholder with a real screenshot of your project!)🚀 FeaturesTrue Gaze Control: Integrates WebGazer.js to use the device's webcam for real-time eye-tracking.Dwell-to-Click: Simply look at a key for a moment to type it. The current actuation time is set to a responsive 1 second.Full QWERTY Layout: Includes all standard alphabet keys, plus Shift, Space, Backspace, and Clear for full functionality.Manual Calibration System: A dedicated "Recalibrate" mode that significantly improves tracking accuracy by learning the user's specific eye movements.Live Video Feedback: A toggleable webcam feed helps users position themselves correctly and understand how the tracker sees their face.Responsive Design: The interface is built with Tailwind CSS to be clean, accessible, and usable on screens of all sizes.🛠️ Tech StackFrontend: HTML5, CSS3, JavaScript (ES6+)Styling: Tailwind CSSEye-Tracking: WebGazer.js⚙️ How to Run This ProjectIMPORTANT: To protect user privacy, web browsers only allow webcam access on secure pages (https://) or on a local server (localhost). You cannot run this project by simply opening the index.html file directly.Recommended Steps:Clone the repository:git clone <your-repo-url>
-cd <your-repo-directory>
-Use a Live Server:If you are using an editor like VS Code or Cursor, install the "Live Server" extension.Right-click on the index.html file.Select "Open with Live Server".Grant Permissions:Your browser will open a new tab with an address like http://127.0.0.1:5500.A pop-up will appear asking for permission to use your camera. You must click "Allow".Calibrate for Accuracy:When the application loads, it's highly recommended to click the "Recalibrate" button.Follow the on-screen instructions, clicking the red dots as they appear. This will make the eye-tracking much more precise.You are now ready to type with your eyes!🧠 Challenges & LearningsDuring the hackathon, we faced a few interesting challenges:Browser Security Policies: The biggest initial hurdle was understanding and correctly implementing a solution for the browser's security restrictions on webcam access. This led to learning about secure contexts (https) and the utility of running a local development server.Tracking Accuracy: The default accuracy of the eye-tracker was inconsistent. Implementing a guided, multi-point calibration system was a critical learning experience that dramatically improved the usability and core functionality of the app.User Experience (UX): Finding the right balance for the dwell time was key. Too long, and it felt slow; too short, and it led to accidental clicks. We settled on 1 second as a good compromise between speed and control.🔮 Future ImprovementsWord Prediction: Implement a suggestion bar to speed up typing.Customization: Allow users to change the dwell time or keyboard layout.Sound Feedback: Add subtle audio cues for key presses.Expanded Character Set: Include number pads and additional symbols.Developed with ❤️ for the TinkerHub Vibe Coding Hackathon.Author: [Your Name Here]
+# 👁️‍🗨️ Gaze-Controlled Virtual Keyboard
+
+A submission for the **Vibe Coding Hackathon** by **TinkerHub**
+
+This is a web-based virtual keyboard that allows users to type *without using their hands*, using just eye movement. With real-time eye tracking via a webcam, the user’s gaze is used to control a virtual cursor. Looking at a key for a short duration simulates a click — making this an innovative accessibility tool.
+
+<img width="1812" height="880" alt="image" src="https://github.com/user-attachments/assets/68aff8a5-46a4-4885-ad7d-e6dc562842a6" />
+
+
+---
+
+## 🚀 Features
+
+- **🎯 True Gaze Control**  
+  Uses [WebGazer.js](https://webgazer.cs.brown.edu/) for real-time eye-tracking with your webcam.
+
+- **🕒 Dwell-to-Click Typing**  
+  Hover over a key with your gaze for ~1 second to simulate a keypress.
+
+- **⌨️ Full QWERTY Layout**  
+  Includes Shift, Space, Backspace, and Clear buttons for full functionality.
+
+- **🎯 Manual Calibration System**  
+  Recalibrate at any time to improve tracking accuracy.
+
+- **🎥 Live Webcam Feedback**  
+  Toggle your webcam preview to adjust your positioning.
+
+- **📱 Responsive Design**  
+  Built with Tailwind CSS to work seamlessly across screen sizes.
+
+---
+
+## 🛠️ Tech Stack
+
+| Category     | Tools Used                      |
+|--------------|----------------------------------|
+| Frontend     | HTML5, CSS3, JavaScript (ES6+)   |
+| Styling      | Tailwind CSS                    |
+| Eye Tracking | WebGazer.js                     |
+
+---
+
+## ⚙️ Getting Started
+
+> ⚠️ Browsers allow webcam access only on **HTTPS** sites or **localhost**.
+
+### 🔧 Steps to Run Locally
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/your-username/gaze-keyboard.git
+   cd gaze-keyboard
